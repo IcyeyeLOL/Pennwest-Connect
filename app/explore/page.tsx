@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { BookOpen, Search, Heart, MessageCircle, Download, Filter } from 'lucide-react'
@@ -40,12 +40,7 @@ export default function ExplorePage() {
     }
   }, [user, loading, router])
 
-
-  useEffect(() => {
-    filterNotes()
-  }, [searchTerm, selectedClass, notes])
-
-  const fetchNotes = async () => {
+  const fetchNotes = useCallback(async () => {
     setLoadingNotes(true)
     try {
       const apiUrl = getApiUrl('/api/notes/global')
@@ -60,10 +55,9 @@ export default function ExplorePage() {
     } finally {
       setLoadingNotes(false)
     }
-  }
+  }, [])
 
-
-  const filterNotes = () => {
+  const filterNotes = useCallback(() => {
     let filtered = notes
 
     // Filter by class
@@ -83,7 +77,11 @@ export default function ExplorePage() {
     }
 
     setFilteredNotes(filtered)
-  }
+  }, [notes, selectedClass, searchTerm])
+
+  useEffect(() => {
+    filterNotes()
+  }, [filterNotes])
 
   const handleLike = async (noteId: number) => {
     if (!user) {

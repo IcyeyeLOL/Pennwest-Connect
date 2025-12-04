@@ -100,7 +100,7 @@ export default function RegisterPage() {
                   <li>Open a new terminal/PowerShell</li>
                   <li>Run: <code className="bg-yellow-100 px-1 rounded">cd backend</code></li>
                   <li>Run: <code className="bg-yellow-100 px-1 rounded">python main.py</code></li>
-                  <li>Wait for "Uvicorn running on http://0.0.0.0:8000"</li>
+                  <li>Wait for &quot;Uvicorn running on http://0.0.0.0:8000&quot;</li>
                   <li>Then try registering again</li>
                 </ol>
               </div>

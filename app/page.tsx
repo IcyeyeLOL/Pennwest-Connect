@@ -78,7 +78,7 @@ export default function Home() {
           >
             <BookOpen className="h-12 w-12 text-primary-600 mb-4 group-hover:text-primary-700 transition-colors" />
             <h3 className="text-xl font-semibold mb-2 group-hover:text-primary-600 transition-colors">Study Together</h3>
-            <p className="text-gray-600">Collaborate and learn from your peers' study materials</p>
+            <p className="text-gray-600">Collaborate and learn from your peers&apos; study materials</p>
           </Link>
         </div>
 

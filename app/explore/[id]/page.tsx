@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { BookOpen, Heart, MessageCircle, Download, ArrowLeft, Send } from 'lucide-react'
@@ -42,15 +42,7 @@ export default function NoteDetailPage() {
   const [submittingComment, setSubmittingComment] = useState(false)
   const [liking, setLiking] = useState(false)
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login')
-    } else if (user) {
-      fetchNote()
-    }
-  }, [user, loading, router, noteId])
-
-  const fetchNote = async () => {
+  const fetchNote = useCallback(async () => {
     setLoadingNote(true)
     try {
       const apiUrl = getApiUrl(`/api/notes/global/${noteId}`)
@@ -67,7 +59,15 @@ export default function NoteDetailPage() {
     } finally {
       setLoadingNote(false)
     }
-  }
+  }, [noteId])
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login')
+    } else if (user) {
+      fetchNote()
+    }
+  }, [user, loading, router, fetchNote])
 
   const handleLike = async () => {
     if (!user || liking) return

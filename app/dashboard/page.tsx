@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Search, FileText, Download, Trash2, BookOpen } from 'lucide-react'
@@ -29,15 +29,7 @@ export default function DashboardPage() {
   const [loadingNotes, setLoadingNotes] = useState(true)
   const [deletingNotes, setDeletingNotes] = useState<Set<number>>(new Set())
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login')
-    } else if (user) {
-      fetchNotes()
-    }
-  }, [user, loading, router])
-
-  const fetchNotes = async () => {
+  const fetchNotes = useCallback(async () => {
     setLoadingNotes(true)
     try {
       const apiUrl = getApiUrl('/api/notes')
@@ -56,7 +48,7 @@ export default function DashboardPage() {
     } finally {
       setLoadingNotes(false)
     }
-  }
+  }, [router])
 
   // Derive classes dynamically from user's notes
   useEffect(() => {

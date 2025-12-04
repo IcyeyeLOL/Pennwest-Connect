@@ -89,7 +89,7 @@ export default function LoginPage() {
                   <li>Open a new terminal/PowerShell</li>
                   <li>Run: <code className="bg-yellow-100 px-1 rounded">cd backend</code></li>
                   <li>Run: <code className="bg-yellow-100 px-1 rounded">python main.py</code></li>
-                  <li>Wait for "Uvicorn running on http://0.0.0.0:8000"</li>
+                  <li>Wait for &quot;Uvicorn running on http://0.0.0.0:8000&quot;</li>
                   <li>Then try logging in again</li>
                 </ol>
               </div>
@@ -138,7 +138,7 @@ export default function LoginPage() {
         </form>
 
         <p className="mt-6 text-center text-sm text-gray-600">
-          Don't have an account?{' '}
+          Don&apos;t have an account?{' '}
           <Link href="/register" className="text-primary-600 hover:text-primary-700 font-semibold">
             Sign up
           </Link>
