@@ -28,13 +28,22 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
     Returns a JWT token for immediate authentication.
     """
     try:
-        # Check if user already exists
-        existing_user = db.query(User).filter(User.email == user_data.email).first()
+        # Check if email or username already exists (single query for efficiency)
+        existing_user = db.query(User).filter(
+            (User.email == user_data.email) | (User.username == user_data.username)
+        ).first()
+        
         if existing_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
-            )
+            if existing_user.email == user_data.email:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Email already registered"
+                )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Username already taken"
+                )
         
         # Create new user
         try:
@@ -44,14 +53,6 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error processing password. Please try a shorter password."
-            )
-        
-        # Check if username already exists
-        existing_username = db.query(User).filter(User.username == user_data.username).first()
-        if existing_username:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username already taken"
             )
         
         db_user = User(

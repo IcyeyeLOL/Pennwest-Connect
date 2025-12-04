@@ -5,7 +5,7 @@ from typing import List
 # Security
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 10080  # 7 days
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080"))  # Default 7 days
 
 # Database
 # Railway provides DATABASE_URL, but also check DATABASE_PUBLIC_URL as fallback
@@ -53,10 +53,24 @@ ALLOWED_ORIGINS = get_allowed_origins()
 
 # File Upload
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads")
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
-ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx", ".txt", ".png", ".jpg", ".jpeg"}
+MAX_FILE_SIZE = int(os.getenv("MAX_FILE_SIZE", str(10 * 1024 * 1024)))  # Default 10MB, configurable
+ALLOWED_EXTENSIONS = set(
+    os.getenv("ALLOWED_EXTENSIONS", ".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg").split(",")
+)
 
 # Server
 HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "8000"))
+
+# Database Connection Pool (for scalability)
+DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "10"))
+DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "20"))
+DB_POOL_TIMEOUT = int(os.getenv("DB_POOL_TIMEOUT", "30"))
+
+# Logging
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+
+# Pagination
+DEFAULT_PAGE_SIZE = int(os.getenv("DEFAULT_PAGE_SIZE", "20"))
+MAX_PAGE_SIZE = int(os.getenv("MAX_PAGE_SIZE", "100"))
 

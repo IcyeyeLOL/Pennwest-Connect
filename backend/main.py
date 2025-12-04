@@ -8,12 +8,15 @@ from config import get_allowed_origins, HOST, PORT
 from database import init_db
 from routes import auth, notes
 
-# Configure logging
+# Configure logging dynamically
+from config import LOG_LEVEL
+log_level = getattr(logging, LOG_LEVEL, logging.INFO)
 logging.basicConfig(
-    level=logging.INFO,
+    level=log_level,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+logger.info(f"Logging level set to: {LOG_LEVEL}")
 
 # Initialize database
 # Run migration first if needed
@@ -40,7 +43,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS middleware - dynamically get origins
+# CORS middleware - get origins at startup
 allowed_origins = get_allowed_origins()
 logger.info(f"Configuring CORS with origins: {allowed_origins}")
 

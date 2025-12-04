@@ -100,27 +100,55 @@ async def upload_note(
 @router.get("", response_model=List[NoteResponse])
 async def get_notes(
     current_user = Depends(get_current_user),
+    page: int = 1,
+    page_size: int = 20,
     db: Session = Depends(get_db)
 ):
-    """Get all notes for the authenticated user (their own notes)."""
+    """Get all notes for the authenticated user (their own notes) with pagination."""
     from models import Note, Like, Comment
+    from sqlalchemy import func
+    from config import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
     
-    notes = db.query(Note).filter(Note.author_id == current_user.id).order_by(Note.created_at.desc()).all()
+    # Validate pagination
+    page_size = min(max(1, page_size), MAX_PAGE_SIZE)
+    page = max(1, page)
+    offset = (page - 1) * page_size
     
+    # Get paginated notes with author info
+    notes = db.query(Note).filter(
+        Note.author_id == current_user.id
+    ).order_by(Note.created_at.desc()).offset(offset).limit(page_size).all()
+    
+    if not notes:
+        return []
+    
+    # Get all note IDs
+    note_ids = [note.id for note in notes]
+    
+    # Get like counts for all notes in one query
+    like_counts = db.query(
+        Like.note_id,
+        func.count(Like.id).label('count')
+    ).filter(Like.note_id.in_(note_ids)).group_by(Like.note_id).all()
+    like_counts_dict = {note_id: count for note_id, count in like_counts}
+    
+    # Get user's likes for all notes in one query
+    user_likes = db.query(Like.note_id).filter(
+        Like.note_id.in_(note_ids),
+        Like.user_id == current_user.id
+    ).all()
+    user_liked_note_ids = {like.note_id for like in user_likes}
+    
+    # Get comment counts for all notes in one query
+    comment_counts = db.query(
+        Comment.note_id,
+        func.count(Comment.id).label('count')
+    ).filter(Comment.note_id.in_(note_ids)).group_by(Comment.note_id).all()
+    comment_counts_dict = {note_id: count for note_id, count in comment_counts}
+    
+    # Build response
     result = []
     for note in notes:
-        # Count likes
-        like_count = db.query(Like).filter(Like.note_id == note.id).count()
-        
-        # Check if current user liked this note
-        is_liked = db.query(Like).filter(
-            Like.note_id == note.id,
-            Like.user_id == current_user.id
-        ).first() is not None
-        
-        # Count comments
-        comment_count = db.query(Comment).filter(Comment.note_id == note.id).count()
-        
         result.append(NoteResponse(
             id=note.id,
             title=note.title,
@@ -130,9 +158,9 @@ async def get_notes(
             author_email=note.author.email,
             author_username=note.author.username,
             created_at=note.created_at,
-            like_count=like_count,
-            is_liked=is_liked,
-            comment_count=comment_count
+            like_count=like_counts_dict.get(note.id, 0),
+            is_liked=note.id in user_liked_note_ids,
+            comment_count=comment_counts_dict.get(note.id, 0)
         ))
     
     return result
@@ -140,10 +168,19 @@ async def get_notes(
 @router.get("/global", response_model=List[NoteResponse])
 async def get_global_notes(
     class_name: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20,
     db: Session = Depends(get_db)
 ):
-    """Get all notes globally (public endpoint with optional class filter)."""
+    """Get all notes globally (public endpoint with optional class filter and pagination)."""
     from models import Note, Like, Comment
+    from sqlalchemy import func
+    from config import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
+    
+    # Validate pagination
+    page_size = min(max(1, page_size), MAX_PAGE_SIZE)
+    page = max(1, page)
+    offset = (page - 1) * page_size
     
     query = db.query(Note)
     
@@ -151,16 +188,35 @@ async def get_global_notes(
     if class_name:
         query = query.filter(Note.class_name == class_name)
     
-    notes = query.order_by(Note.created_at.desc()).all()
+    # Get total count for pagination
+    total = query.count()
     
+    # Get paginated notes
+    notes = query.order_by(Note.created_at.desc()).offset(offset).limit(page_size).all()
+    
+    if not notes:
+        return []
+    
+    # Get all note IDs
+    note_ids = [note.id for note in notes]
+    
+    # Get like counts for all notes in one query (optimized)
+    like_counts = db.query(
+        Like.note_id,
+        func.count(Like.id).label('count')
+    ).filter(Like.note_id.in_(note_ids)).group_by(Like.note_id).all()
+    like_counts_dict = {note_id: count for note_id, count in like_counts}
+    
+    # Get comment counts for all notes in one query (optimized)
+    comment_counts = db.query(
+        Comment.note_id,
+        func.count(Comment.id).label('count')
+    ).filter(Comment.note_id.in_(note_ids)).group_by(Comment.note_id).all()
+    comment_counts_dict = {note_id: count for note_id, count in comment_counts}
+    
+    # Build response
     result = []
     for note in notes:
-        # Count likes
-        like_count = db.query(Like).filter(Like.note_id == note.id).count()
-        
-        # Count comments
-        comment_count = db.query(Comment).filter(Comment.note_id == note.id).count()
-        
         result.append(NoteResponse(
             id=note.id,
             title=note.title,
@@ -170,9 +226,9 @@ async def get_global_notes(
             author_email=note.author.email,
             author_username=note.author.username,
             created_at=note.created_at,
-            like_count=like_count,
+            like_count=like_counts_dict.get(note.id, 0),
             is_liked=False,  # Will be updated on frontend if user is authenticated
-            comment_count=comment_count
+            comment_count=comment_counts_dict.get(note.id, 0)
         ))
     
     return result
@@ -230,17 +286,43 @@ async def get_global_note_detail(
     )
 
 @router.get("/recent", response_model=List[NoteResponse])
-async def get_recent_notes(db: Session = Depends(get_db)):
-    """Get recent notes (public endpoint)."""
+async def get_recent_notes(
+    limit: int = 6,
+    db: Session = Depends(get_db)
+):
+    """Get recent notes (public endpoint) with optimized queries."""
     from models import Note, Like, Comment
+    from sqlalchemy import func
     
-    notes = db.query(Note).order_by(Note.created_at.desc()).limit(6).all()
+    # Validate limit
+    limit = min(max(1, limit), 50)  # Max 50 recent notes
     
+    # Get recent notes
+    notes = db.query(Note).order_by(Note.created_at.desc()).limit(limit).all()
+    
+    if not notes:
+        return []
+    
+    # Get all note IDs
+    note_ids = [note.id for note in notes]
+    
+    # Get like counts for all notes in one query (optimized)
+    like_counts = db.query(
+        Like.note_id,
+        func.count(Like.id).label('count')
+    ).filter(Like.note_id.in_(note_ids)).group_by(Like.note_id).all()
+    like_counts_dict = {note_id: count for note_id, count in like_counts}
+    
+    # Get comment counts for all notes in one query (optimized)
+    comment_counts = db.query(
+        Comment.note_id,
+        func.count(Comment.id).label('count')
+    ).filter(Comment.note_id.in_(note_ids)).group_by(Comment.note_id).all()
+    comment_counts_dict = {note_id: count for note_id, count in comment_counts}
+    
+    # Build response
     result = []
     for note in notes:
-        like_count = db.query(Like).filter(Like.note_id == note.id).count()
-        comment_count = db.query(Comment).filter(Comment.note_id == note.id).count()
-        
         result.append(NoteResponse(
             id=note.id,
             title=note.title,
@@ -250,9 +332,9 @@ async def get_recent_notes(db: Session = Depends(get_db)):
             author_email=note.author.email,
             author_username=note.author.username,
             created_at=note.created_at,
-            like_count=like_count,
+            like_count=like_counts_dict.get(note.id, 0),
             is_liked=False,
-            comment_count=comment_count
+            comment_count=comment_counts_dict.get(note.id, 0)
         ))
     
     return result

@@ -84,12 +84,14 @@ export default function RegisterPage() {
 
       const data = await response.json()
       if (data.access_token) {
-        Cookies.set('token', data.access_token, { expires: 7 })
-        // Wait a moment for cookie to be set, then redirect
-        setTimeout(() => {
-          router.push('/dashboard')
-          window.location.href = '/dashboard'
-        }, 100)
+        // Set cookie with proper settings for cross-origin
+        Cookies.set('token', data.access_token, { 
+          expires: 7,
+          sameSite: 'lax', // Allows cross-site requests
+          secure: window.location.protocol === 'https:' // Secure in production
+        })
+        // Redirect to dashboard
+        window.location.href = '/dashboard'
       } else {
         setError('Registration successful but no token received. Please try logging in.')
       }
