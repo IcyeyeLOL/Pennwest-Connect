@@ -25,10 +25,13 @@ except Exception as e:
 
 try:
     init_db()
-    logger.info("Database initialized")
+    logger.info("Database initialized successfully")
 except Exception as e:
     logger.error(f"Database initialization failed: {e}")
-    raise
+    logger.error("Server will start but database operations may fail.")
+    logger.error("Please check your DATABASE_URL environment variable.")
+    # Don't raise - allow server to start so we can see health check
+    # The actual database operations will fail with clear error messages
 
 # Create FastAPI app
 app = FastAPI(
@@ -73,6 +76,30 @@ def read_root():
 def health_check():
     """Health check endpoint."""
     return {"status": "healthy"}
+
+# Database health check endpoint
+@app.get("/health/db")
+def health_check_db():
+    """Check database connection."""
+    try:
+        from database import engine
+        from sqlalchemy import text
+        
+        # Try to connect to database
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        
+        return {
+            "status": "healthy",
+            "database": "connected"
+        }
+    except Exception as e:
+        logger.error(f"Database health check failed: {e}")
+        return {
+            "status": "unhealthy",
+            "database": "disconnected",
+            "error": str(e)
+        }, 503
 
 if __name__ == "__main__":
     import uvicorn
