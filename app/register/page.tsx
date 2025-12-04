@@ -31,6 +31,9 @@ export default function RegisterPage() {
 
     try {
       const apiUrl = getApiUrl('/api/auth/register')
+      console.log('Attempting registration to:', apiUrl)
+      console.log('Request payload:', { email, username, password: '***' })
+      
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -38,9 +41,30 @@ export default function RegisterPage() {
         },
         body: JSON.stringify({ email, password, username }),
       })
+      
+      console.log('Response status:', response.status)
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()))
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Registration failed' }))
+        // Try to get error details from response
+        let errorData: any
+        const contentType = response.headers.get('content-type')
+        
+        try {
+          if (contentType?.includes('application/json')) {
+            errorData = await response.json()
+          } else {
+            // If not JSON, try to get text
+            const text = await response.text()
+            errorData = { detail: `Server error (${response.status}): ${text.substring(0, 200)}` }
+          }
+        } catch (parseError) {
+          // If we can't parse the response at all
+          errorData = { 
+            detail: `Registration failed with status ${response.status}. Please check your backend is running and accessible.` 
+          }
+        }
+        
         // Handle FastAPI validation errors which can be an array
         if (Array.isArray(errorData.detail)) {
           const errorMessages = errorData.detail.map((err: any) => {
@@ -51,7 +75,9 @@ export default function RegisterPage() {
         } else if (typeof errorData.detail === 'string') {
           setError(errorData.detail)
         } else {
-          setError('Registration failed. Please check your input and try again.')
+          // Show more debugging info
+          const apiUrl = getCurrentApiUrl()
+          setError(`Registration failed (Status: ${response.status}). API URL: ${apiUrl}. Please check backend logs for details.`)
         }
         return
       }
