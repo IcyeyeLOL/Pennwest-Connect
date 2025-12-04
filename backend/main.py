@@ -41,9 +41,13 @@ app = FastAPI(
 allowed_origins = get_allowed_origins()
 logger.info(f"Configuring CORS with origins: {allowed_origins}")
 
+# Allow Vercel preview deployments (all *.vercel.app domains)
+vercel_regex = r"https://.*\.vercel\.app"
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=vercel_regex,  # Allow all Vercel preview deployments
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
