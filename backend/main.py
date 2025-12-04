@@ -1,4 +1,5 @@
 """Main FastAPI application."""
+import os
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,8 +23,12 @@ try:
 except Exception as e:
     logger.warning(f"Migration check failed: {e}. Continuing with table creation...")
 
-init_db()
-logger.info("Database initialized")
+try:
+    init_db()
+    logger.info("Database initialized")
+except Exception as e:
+    logger.error(f"Database initialization failed: {e}")
+    raise
 
 # Create FastAPI app
 app = FastAPI(
@@ -33,12 +38,16 @@ app = FastAPI(
 )
 
 # CORS middleware - dynamically get origins
+allowed_origins = get_allowed_origins()
+logger.info(f"Configuring CORS with origins: {allowed_origins}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=get_allowed_origins(),
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Include routers
@@ -63,5 +72,7 @@ def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    logger.info(f"Starting server on {HOST}:{PORT}")
-    uvicorn.run(app, host=HOST, port=PORT)
+    # Railway provides PORT environment variable - use it if available
+    port = int(os.getenv("PORT", PORT))
+    logger.info(f"Starting server on {HOST}:{port}")
+    uvicorn.run(app, host=HOST, port=port, log_level="info")
