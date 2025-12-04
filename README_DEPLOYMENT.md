@@ -179,21 +179,30 @@ AWS_REGION=us-east-1
 
 ## 📝 Environment Variables Reference
 
-### Backend (Railway)
+See **[ENV_VARIABLES.md](./ENV_VARIABLES.md)** for a complete checklist!
+
+### Backend (Railway) - Required
 ```
-SECRET_KEY=required
-DATABASE_URL=required (PostgreSQL)
-FRONTEND_URL=required
-STORAGE_TYPE=local|s3
-S3_BUCKET_NAME=required if STORAGE_TYPE=s3
-AWS_ACCESS_KEY_ID=required if STORAGE_TYPE=s3
-AWS_SECRET_ACCESS_KEY=required if STORAGE_TYPE=s3
+SECRET_KEY=required (generate random string)
+DATABASE_URL=required (PostgreSQL connection string)
+FRONTEND_URL=required (your frontend URL, no trailing slash)
+STORAGE_TYPE=cloudinary|s3|local
+
+# If using Cloudinary (Recommended)
+CLOUDINARY_CLOUD_NAME=required
+CLOUDINARY_API_KEY=required
+CLOUDINARY_API_SECRET=required
+
+# If using S3
+S3_BUCKET_NAME=required
+AWS_ACCESS_KEY_ID=required
+AWS_SECRET_ACCESS_KEY=required
 AWS_REGION=optional (default: us-east-1)
 ```
 
-### Frontend (Vercel)
+### Frontend (Vercel) - Required
 ```
-NEXT_PUBLIC_API_URL=required (backend URL)
+NEXT_PUBLIC_API_URL=required (your backend URL, no trailing slash)
 ```
 
 ## 🎉 Success!
