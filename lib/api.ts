@@ -1,8 +1,18 @@
 // API utility functions
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
+// Helper to check if we're in production
+export function isProduction(): boolean {
+  return typeof window !== 'undefined' && 
+    (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1')
+}
+
 export function getApiUrl(endpoint: string): string {
   return `${API_URL}${endpoint}`
+}
+
+export function getCurrentApiUrl(): string {
+  return API_URL
 }
 
 export function getAuthHeaders(): HeadersInit {

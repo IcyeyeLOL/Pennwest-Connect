@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { BookOpen } from 'lucide-react'
 import Cookies from 'js-cookie'
-import { getApiUrl } from '@/lib/api'
+import { getApiUrl, isProduction, getCurrentApiUrl } from '@/lib/api'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -58,7 +58,12 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       if (err.message?.includes('fetch') || err.message?.includes('Network')) {
-        setError('Cannot connect to server. Please make sure the backend is running on http://localhost:8000')
+        const apiUrl = getCurrentApiUrl()
+        if (isProduction()) {
+          setError(`Cannot connect to backend server. Current API URL: ${apiUrl}. Please set NEXT_PUBLIC_API_URL environment variable in Vercel.`)
+        } else {
+          setError('Cannot connect to server. Please make sure the backend is running on http://localhost:8000')
+        }
       } else {
         setError(err.message || 'Network error. Please try again.')
       }
@@ -82,16 +87,33 @@ export default function LoginPage() {
           <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
             <p className="font-semibold mb-1">Error:</p>
             <p>{error}</p>
-            {error.includes('Cannot connect to server') && (
+            {error.includes('Cannot connect') && (
               <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm">
-                <p className="font-semibold text-yellow-800 mb-1">Quick Fix:</p>
-                <ol className="list-decimal list-inside text-yellow-700 space-y-1">
-                  <li>Open a new terminal/PowerShell</li>
-                  <li>Run: <code className="bg-yellow-100 px-1 rounded">cd backend</code></li>
-                  <li>Run: <code className="bg-yellow-100 px-1 rounded">python main.py</code></li>
-                  <li>Wait for &quot;Uvicorn running on http://0.0.0.0:8000&quot;</li>
-                  <li>Then try logging in again</li>
-                </ol>
+                <p className="font-semibold text-yellow-800 mb-1">
+                  {isProduction() ? 'Production Fix:' : 'Quick Fix:'}
+                </p>
+                {isProduction() ? (
+                  <div className="space-y-2 text-yellow-700">
+                    <p className="font-semibold">Missing Environment Variable!</p>
+                    <p>Your frontend is trying to connect to: <code className="bg-yellow-100 px-1 rounded">{getCurrentApiUrl()}</code></p>
+                    <ol className="list-decimal list-inside space-y-1">
+                      <li>Go to your Vercel dashboard</li>
+                      <li>Select your project → Settings → Environment Variables</li>
+                      <li>Add: <code className="bg-yellow-100 px-1 rounded">NEXT_PUBLIC_API_URL</code></li>
+                      <li>Value: Your backend URL (e.g., <code className="bg-yellow-100 px-1 rounded">https://your-backend.railway.app</code>)</li>
+                      <li>Redeploy your frontend</li>
+                    </ol>
+                    <p className="text-xs mt-2">See <strong>ENV_VARIABLES.md</strong> for full instructions.</p>
+                  </div>
+                ) : (
+                  <ol className="list-decimal list-inside space-y-1 text-yellow-700">
+                    <li>Open a new terminal/PowerShell</li>
+                    <li>Run: <code className="bg-yellow-100 px-1 rounded">cd backend</code></li>
+                    <li>Run: <code className="bg-yellow-100 px-1 rounded">python main.py</code></li>
+                    <li>Wait for &quot;Uvicorn running on http://0.0.0.0:8000&quot;</li>
+                    <li>Then try logging in again</li>
+                  </ol>
+                )}
               </div>
             )}
           </div>

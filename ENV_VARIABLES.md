@@ -29,7 +29,7 @@ DATABASE_URL=postgresql://user:password@host:port/database
 
 ### 3. **FRONTEND_URL** (REQUIRED for CORS)
 ```bash
-FRONTEND_URL=https://pennwest-connect.vercel.app
+FRONTEND_URL=https://pennwest-connect-production.up.railway.app
 ```
 **Important:** 
 - No trailing slash
@@ -143,7 +143,7 @@ Only used for local storage. Ignored if using Cloudinary/S3.
 ```bash
 SECRET_KEY=abc123xyz789randomsecretkey456
 DATABASE_URL=postgresql://user:pass@host:5432/dbname
-FRONTEND_URL=https://pennwest-connect.vercel.app
+FRONTEND_URL=https://pennwest-connect-xuog.vercel.app/
 STORAGE_TYPE=cloudinary
 CLOUDINARY_CLOUD_NAME=dq8nnkcqq
 CLOUDINARY_API_KEY=753831885695595
@@ -152,7 +152,7 @@ CLOUDINARY_API_SECRET=*********************************
 
 ### Frontend (Vercel):
 ```bash
-NEXT_PUBLIC_API_URL=https://pennwest-connect.railway.app
+NEXT_PUBLIC_API_URL=https://pennwest-connect-xuog.vercel.app/
 ```
 
 ---
