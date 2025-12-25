@@ -214,11 +214,11 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <Navigation />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">My Dashboard</h1>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        <div className="mb-4 sm:mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 sm:mb-4">My Dashboard</h1>
           
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
@@ -232,7 +232,7 @@ export default function DashboardPage() {
             <select
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white"
+              className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white text-base"
             >
               <option value="">All Classes</option>
               {classes.map((className) => (
@@ -261,39 +261,42 @@ export default function DashboardPage() {
             <p className="mt-4 text-gray-600">Loading notes...</p>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredNotes.map((note) => (
-            <div key={note.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-              <div className="flex items-start justify-between mb-4">
-                <FileText className="h-8 w-8 text-primary-600" />
-                <div className="flex items-center space-x-2">
+            <div key={note.id} className="bg-white rounded-lg shadow-md p-4 sm:p-6 hover:shadow-lg transition-shadow">
+              <div className="flex items-start justify-between mb-3 sm:mb-4">
+                <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-primary-600 flex-shrink-0" />
+                <div className="flex items-center space-x-1 sm:space-x-2">
                   <button
                     onClick={() => setPreviewNote(note)}
-                    className="p-2 text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                    className="p-2 sm:p-2.5 text-primary-600 hover:bg-primary-50 rounded transition-colors touch-target"
                     title="Preview"
+                    aria-label="Preview note"
                   >
-                    <Eye className="h-5 w-5" />
+                    <Eye className="h-5 w-5 sm:h-5 sm:w-5" />
                   </button>
                   <button
                     onClick={() => downloadNote(note)}
-                    className="p-2 text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                    className="p-2 sm:p-2.5 text-primary-600 hover:bg-primary-50 rounded transition-colors touch-target"
                     title="Download"
+                    aria-label="Download note"
                   >
-                    <Download className="h-5 w-5" />
+                    <Download className="h-5 w-5 sm:h-5 sm:w-5" />
                   </button>
                   <button
                     onClick={() => deleteNote(note)}
                     disabled={deletingNotes.has(note.id) || !user}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-2 sm:p-2.5 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target"
                     title="Delete"
+                    aria-label="Delete note"
                   >
-                    <Trash2 className="h-5 w-5" />
+                    <Trash2 className="h-5 w-5 sm:h-5 sm:w-5" />
                   </button>
                 </div>
               </div>
-              <h3 className="text-xl font-semibold mb-2">{note.title}</h3>
-              <p className="text-sm text-gray-600 mb-2">{note.description}</p>
-              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <h3 className="text-lg sm:text-xl font-semibold mb-2 line-clamp-2">{note.title}</h3>
+              <p className="text-sm text-gray-600 mb-2 line-clamp-2">{note.description}</p>
+              <div className="flex items-center justify-between mt-3 sm:mt-4 pt-3 sm:pt-4 border-t">
                 <span className="text-xs font-medium text-primary-600 bg-primary-50 px-2 py-1 rounded">
                   {note.class_name}
                 </span>

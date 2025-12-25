@@ -157,19 +157,19 @@ export default function NoteDetailPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <Navigation />
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <Link
           href="/explore"
-          className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-6"
+          className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-4 sm:mb-6 text-sm sm:text-base touch-target"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Explore
         </Link>
 
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">{note.title}</h1>
+        <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 lg:p-8">
+          <div className="flex items-start justify-between mb-4 sm:mb-6">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">{note.title}</h1>
               <div className="flex items-center space-x-4 mb-4">
                 <span className="text-sm font-medium text-primary-600 bg-primary-50 px-3 py-1 rounded">
                   {note.class_name}
@@ -182,36 +182,39 @@ export default function NoteDetailPage() {
                 <p className="text-gray-700 mb-4">{note.description}</p>
               )}
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 flex-shrink-0 ml-2">
               <button
                 onClick={() => setShowPreview(true)}
-                className="p-3 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                className="p-2 sm:p-3 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors touch-target"
                 title="Preview"
+                aria-label="Preview note"
               >
-                <Eye className="h-6 w-6" />
+                <Eye className="h-5 w-5 sm:h-6 sm:w-6" />
               </button>
               <button
                 onClick={downloadNote}
-                className="p-3 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                className="p-2 sm:p-3 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors touch-target"
                 title="Download"
+                aria-label="Download note"
               >
-                <Download className="h-6 w-6" />
+                <Download className="h-5 w-5 sm:h-6 sm:w-6" />
               </button>
             </div>
           </div>
 
-          <div className="flex items-center space-x-6 mb-6 pb-6 border-b">
+          <div className="flex items-center space-x-4 sm:space-x-6 mb-4 sm:mb-6 pb-4 sm:pb-6 border-b">
             <button
               onClick={handleLike}
               disabled={liking}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+              className={`flex items-center space-x-2 px-3 sm:px-4 py-2 rounded-lg transition-colors touch-target ${
                 note.is_liked
                   ? 'bg-red-100 text-red-600 hover:bg-red-200'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
+              aria-label={`${note.is_liked ? 'Unlike' : 'Like'} note`}
             >
               <Heart className={`h-5 w-5 ${note.is_liked ? 'fill-current' : ''}`} />
-              <span className="font-medium">{note.like_count} {note.like_count === 1 ? 'Like' : 'Likes'}</span>
+              <span className="font-medium text-sm sm:text-base">{note.like_count} {note.like_count === 1 ? 'Like' : 'Likes'}</span>
             </button>
             <div className="flex items-center space-x-2 text-gray-600">
               <MessageCircle className="h-5 w-5" />
@@ -225,23 +228,23 @@ export default function NoteDetailPage() {
             </p>
           </div>
 
-          <div className="border-t pt-6">
-            <h2 className="text-xl font-semibold mb-4">Comments</h2>
+          <div className="border-t pt-4 sm:pt-6">
+            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Comments</h2>
             
-            <form onSubmit={handleComment} className="mb-6">
-              <div className="flex space-x-2">
+            <form onSubmit={handleComment} className="mb-4 sm:mb-6">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   placeholder="Write a comment..."
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white text-base"
                   maxLength={1000}
                 />
                 <button
                   type="submit"
                   disabled={!commentText.trim() || submittingComment}
-                  className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  className="px-4 sm:px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 touch-target text-base"
                 >
                   <Send className="h-4 w-4" />
                   <span>Post</span>

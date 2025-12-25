@@ -196,14 +196,14 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
-        <div className="text-center mb-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4 py-6 sm:py-8">
+      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6 sm:p-8">
+        <div className="text-center mb-6 sm:mb-8">
           <Link href="/" className="inline-block hover:opacity-80 transition-opacity">
-            <BookOpen className="h-12 w-12 text-primary-600 mx-auto mb-4 cursor-pointer" />
+            <BookOpen className="h-10 w-10 sm:h-12 sm:w-12 text-primary-600 mx-auto mb-3 sm:mb-4 cursor-pointer" />
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Join Pennwest Connect</h1>
-          <p className="text-gray-600 mt-2">Create your account to get started</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Join Pennwest Connect</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-2">Create your account to get started</p>
         </div>
 
         {error && (
@@ -338,7 +338,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading || usernameAvailability.available === false || usernameAvailability.checking}
-            className="w-full py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed text-base touch-target"
           >
             {loading ? 'Creating account...' : 'Create Account'}
           </button>

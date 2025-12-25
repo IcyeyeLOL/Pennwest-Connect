@@ -156,29 +156,31 @@ export default function NotePreview({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-2 sm:p-4">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-6xl max-h-[95vh] sm:max-h-[90vh] flex flex-col m-2 sm:m-0">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center space-x-3">
-            {previewType === 'pdf' && <FileText className="h-5 w-5 text-primary-600" />}
-            {previewType === 'image' && <ImageIcon className="h-5 w-5 text-primary-600" />}
-            {previewType === 'text' && <File className="h-5 w-5 text-primary-600" />}
-            <h2 className="text-xl font-semibold text-gray-900 truncate">{noteTitle}</h2>
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b flex-shrink-0">
+          <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
+            {previewType === 'pdf' && <FileText className="h-5 w-5 text-primary-600 flex-shrink-0" />}
+            {previewType === 'image' && <ImageIcon className="h-5 w-5 text-primary-600 flex-shrink-0" />}
+            {previewType === 'text' && <File className="h-5 w-5 text-primary-600 flex-shrink-0" />}
+            <h2 className="text-base sm:text-xl font-semibold text-gray-900 truncate">{noteTitle}</h2>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 flex-shrink-0">
             <button
               onClick={handleDownload}
-              className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              className="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm sm:text-base touch-target"
               title="Download"
+              aria-label="Download note"
             >
               <Download className="h-4 w-4" />
-              <span>Download</span>
+              <span className="hidden sm:inline">Download</span>
             </button>
             <button
               onClick={onClose}
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors touch-target"
               title="Close"
+              aria-label="Close preview"
             >
               <X className="h-5 w-5" />
             </button>
@@ -228,11 +230,11 @@ export default function NotePreview({
           ) : previewType === 'pdf' && previewUrl ? (
             <iframe
               src={previewUrl}
-              className="w-full h-full min-h-[600px] border-0 rounded"
+              className="w-full h-full min-h-[400px] sm:min-h-[600px] border-0 rounded"
               title={`Preview of ${noteTitle}`}
             />
           ) : previewType === 'image' && previewUrl ? (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex items-center justify-center h-full p-2 sm:p-4">
               <img
                 src={previewUrl}
                 alt={noteTitle}
@@ -240,8 +242,8 @@ export default function NotePreview({
               />
             </div>
           ) : previewType === 'text' && textContent !== null ? (
-            <div className="bg-gray-50 rounded-lg p-6 h-full overflow-auto">
-              <pre className="whitespace-pre-wrap font-mono text-sm text-gray-800">
+            <div className="bg-gray-50 rounded-lg p-3 sm:p-6 h-full overflow-auto">
+              <pre className="whitespace-pre-wrap font-mono text-xs sm:text-sm text-gray-800">
                 {textContent}
               </pre>
             </div>
