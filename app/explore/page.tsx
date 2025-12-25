@@ -14,6 +14,7 @@ interface Note {
   title: string
   class_name: string
   description: string
+  file_path: string
   author_email: string
   author_username: string
   created_at: string
