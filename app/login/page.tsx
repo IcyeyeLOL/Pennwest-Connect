@@ -39,7 +39,20 @@ export default function LoginPage() {
           })
           setError(errorMessages.join('. '))
         } else if (typeof errorData.detail === 'string') {
-          setError(errorData.detail)
+          // Handle specific error types with user-friendly messages
+          let errorMessage = errorData.detail
+          
+          if (errorData.detail.includes('EMAIL_NOT_FOUND')) {
+            errorMessage = 'No account found with this email. Please check your email or sign up for a new account.'
+          } else if (errorData.detail.includes('INVALID_PASSWORD')) {
+            errorMessage = 'Incorrect password. Please try again.'
+          } else if (errorData.detail.includes('Incorrect email or password')) {
+            errorMessage = 'Incorrect email or password. Please check your credentials and try again.'
+          } else if (errorData.detail.includes('No account found')) {
+            errorMessage = 'No account found with this email. Please check your email or sign up for a new account.'
+          }
+          
+          setError(errorMessage)
         } else {
           setError('Login failed. Please check your credentials and try again.')
         }
@@ -86,7 +99,18 @@ export default function LoginPage() {
         {error && (
           <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
             <p className="font-semibold mb-1">Error:</p>
-            <p>{error}</p>
+            <p className="mb-2">{error}</p>
+            {error.includes('No account found') && (
+              <Link 
+                href="/register" 
+                className="text-sm text-primary-600 hover:text-primary-700 underline font-medium"
+              >
+                → Create a new account
+              </Link>
+            )}
+            {error.includes('Incorrect password') && (
+              <p className="text-sm text-gray-600 mt-1">Forgot your password? Contact support for assistance.</p>
+            )}
             {error.includes('Cannot connect') && (
               <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm">
                 <p className="font-semibold text-yellow-800 mb-1">

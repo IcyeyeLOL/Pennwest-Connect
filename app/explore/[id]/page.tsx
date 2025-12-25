@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { getApiUrl, getAuthHeaders } from '@/lib/api'
 import Navigation from '@/components/Navigation'
 import NotePreview from '@/components/NotePreview'
+import { validateContent } from '@/lib/contentFilter'
 
 interface Comment {
   id: number
@@ -44,6 +45,7 @@ export default function NoteDetailPage() {
   const [submittingComment, setSubmittingComment] = useState(false)
   const [liking, setLiking] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const [commentError, setCommentError] = useState<string | null>(null)
 
   const fetchNote = useCallback(async () => {
     setLoadingNote(true)
@@ -98,6 +100,15 @@ export default function NoteDetailPage() {
     e.preventDefault()
     if (!commentText.trim() || submittingComment) return
 
+    // Validate comment content for inappropriate language
+    const validation = validateContent(commentText.trim(), 'comment')
+    if (!validation.isValid) {
+      setCommentError(validation.errors.join(' '))
+      return
+    }
+
+    setCommentError(null)
+
     setSubmittingComment(true)
     try {
       const apiUrl = getApiUrl(`/api/notes/${noteId}/comments`)
@@ -113,10 +124,20 @@ export default function NoteDetailPage() {
 
       if (response.ok) {
         setCommentText('')
+        setCommentError(null)
         fetchNote() // Refresh note data
+      } else {
+        // Handle error response
+        const errorData = await response.json().catch(() => ({ detail: 'Failed to add comment' }))
+        if (typeof errorData.detail === 'string') {
+          setCommentError(errorData.detail)
+        } else {
+          setCommentError('Failed to add comment. Please try again.')
+        }
       }
     } catch (error) {
       console.error('Error adding comment:', error)
+      setCommentError('Network error. Please check your connection and try again.')
     } finally {
       setSubmittingComment(false)
     }
@@ -231,14 +252,25 @@ export default function NoteDetailPage() {
           <div className="border-t pt-4 sm:pt-6">
             <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Comments</h2>
             
+            {commentError && (
+              <div className="mb-3 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
+                {commentError}
+              </div>
+            )}
+            
             <form onSubmit={handleComment} className="mb-4 sm:mb-6">
               <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
+                  onChange={(e) => {
+                    setCommentText(e.target.value)
+                    setCommentError(null) // Clear error when user types
+                  }}
                   placeholder="Write a comment..."
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white text-base"
+                  className={`flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white text-base ${
+                    commentError ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   maxLength={1000}
                 />
                 <button

@@ -37,12 +37,12 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
             if existing_user.email == user_data.email:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Email already registered"
+                    detail="EMAIL_EXISTS: This email is already registered. Please sign in instead."
                 )
             else:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Username already taken"
+                    detail="USERNAME_TAKEN: This username is already taken. Please choose a different username."
                 )
         
         # Create new user
@@ -79,10 +79,23 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
     except IntegrityError as e:
         db.rollback()
         logger.error(f"Database integrity error during registration: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
-        )
+        # Check which constraint was violated
+        error_str = str(e).lower()
+        if 'email' in error_str or 'unique constraint' in error_str:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="EMAIL_EXISTS: This email is already registered. Please sign in instead."
+            )
+        elif 'username' in error_str:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="USERNAME_TAKEN: This username is already taken. Please choose a different username."
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="An account with this information already exists. Please sign in instead."
+            )
     except Exception as e:
         db.rollback()
         logger.error(f"Unexpected error during registration: {str(e)}")
@@ -97,11 +110,19 @@ def login(user_data: UserLogin, db: Session = Depends(get_db)):
     """Login and get access token."""
     user = db.query(User).filter(User.email == user_data.email).first()
     
-    if not user or not verify_password(user_data.password, user.hashed_password):
-        logger.warning(f"Failed login attempt for email: {user_data.email}")
+    if not user:
+        logger.warning(f"Login attempt with non-existent email: {user_data.email}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="EMAIL_NOT_FOUND: No account found with this email. Please check your email or sign up for a new account.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    if not verify_password(user_data.password, user.hashed_password):
+        logger.warning(f"Failed login attempt for email: {user_data.email} - incorrect password")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="INVALID_PASSWORD: Incorrect password. Please try again or reset your password.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     

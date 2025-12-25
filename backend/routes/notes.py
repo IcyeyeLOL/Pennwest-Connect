@@ -13,6 +13,7 @@ from schemas import NoteResponse, NoteDetailResponse, CommentCreate, CommentResp
 from auth import get_current_user
 from config import ALLOWED_EXTENSIONS, MAX_FILE_SIZE
 from storage import storage
+from content_filter import validate_content
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,22 @@ async def upload_note(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"File too large. Maximum size: {MAX_FILE_SIZE / 1024 / 1024}MB"
             )
+        
+        # Validate content for inappropriate language
+        title_valid, title_error = validate_content(title, "title")
+        if not title_valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=title_error
+            )
+        
+        if description:
+            desc_valid, desc_error = validate_content(description, "description")
+            if not desc_valid:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=desc_error
+                )
         
         # Generate unique filename
         unique_filename = f"{uuid.uuid4()}{file_ext}"
@@ -510,6 +527,14 @@ async def add_comment(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Note not found"
+        )
+    
+    # Validate comment content for inappropriate language
+    content_valid, content_error = validate_content(comment_data.content, "comment")
+    if not content_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=content_error
         )
     
     comment = Comment(

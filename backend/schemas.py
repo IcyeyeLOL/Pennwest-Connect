@@ -55,10 +55,61 @@ class NoteCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     class_name: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=1000)
+    
+    @field_validator('title')
+    @classmethod
+    def validate_title(cls, v: str) -> str:
+        """Validate title for inappropriate language."""
+        if not v:
+            return v
+        
+        # Import here to avoid circular imports
+        from content_filter import validate_content
+        
+        is_valid, error_msg = validate_content(v, "title")
+        
+        if not is_valid:
+            raise ValueError(error_msg)
+        
+        return v
+    
+    @field_validator('description')
+    @classmethod
+    def validate_description(cls, v: Optional[str]) -> Optional[str]:
+        """Validate description for inappropriate language."""
+        if not v:
+            return v
+        
+        # Import here to avoid circular imports
+        from content_filter import validate_content
+        
+        is_valid, error_msg = validate_content(v, "description")
+        
+        if not is_valid:
+            raise ValueError(error_msg)
+        
+        return v
 
 class CommentCreate(BaseModel):
     """Comment creation schema."""
     content: str = Field(..., min_length=1, max_length=1000)
+    
+    @field_validator('content')
+    @classmethod
+    def validate_content(cls, v: str) -> str:
+        """Validate comment content for inappropriate language."""
+        if not v:
+            return v
+        
+        # Import here to avoid circular imports
+        from content_filter import validate_content
+        
+        is_valid, error_msg = validate_content(v, "comment")
+        
+        if not is_valid:
+            raise ValueError(error_msg)
+        
+        return v
 
 class CommentResponse(BaseModel):
     """Comment response schema."""

@@ -107,7 +107,7 @@ export default function RegisterPage() {
 
     // Check if username is taken (if availability check was performed)
     if (usernameAvailability.available === false) {
-      setError('Username is already taken. Please choose a different username.')
+      setError('This username is already taken. Please choose a different username.')
       return
     }
     
@@ -157,7 +157,20 @@ export default function RegisterPage() {
           })
           setError(errorMessages.join('. '))
         } else if (typeof errorData.detail === 'string') {
-          setError(errorData.detail)
+          // Handle specific error types with user-friendly messages
+          let errorMessage = errorData.detail
+          
+          if (errorData.detail.includes('EMAIL_EXISTS')) {
+            errorMessage = 'This email is already registered. Please sign in instead.'
+          } else if (errorData.detail.includes('USERNAME_TAKEN')) {
+            errorMessage = 'This username is already taken. Please choose a different username.'
+          } else if (errorData.detail.includes('Email already registered')) {
+            errorMessage = 'This email is already registered. Please sign in instead.'
+          } else if (errorData.detail.includes('Username already taken')) {
+            errorMessage = 'This username is already taken. Please choose a different username.'
+          }
+          
+          setError(errorMessage)
         } else {
           // Show more debugging info
           const apiUrl = getCurrentApiUrl()
@@ -209,7 +222,18 @@ export default function RegisterPage() {
         {error && (
           <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
             <p className="font-semibold mb-1">Error:</p>
-            <p>{error}</p>
+            <p className="mb-2">{error}</p>
+            {error.includes('already registered') && (
+              <Link 
+                href="/login" 
+                className="text-sm text-primary-600 hover:text-primary-700 underline font-medium"
+              >
+                → Sign in instead
+              </Link>
+            )}
+            {error.includes('username is already taken') && (
+              <p className="text-sm text-gray-600 mt-1">Try adding numbers or a different variation.</p>
+            )}
             {error.includes('Cannot connect') && (
               <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm">
                 <p className="font-semibold text-yellow-800 mb-1">

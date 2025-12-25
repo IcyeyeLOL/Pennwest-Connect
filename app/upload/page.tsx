@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth'
 import Link from 'next/link'
 import { getApiUrl, getAuthHeadersFormData } from '@/lib/api'
 import Navigation from '@/components/Navigation'
+import { validateContent } from '@/lib/contentFilter'
 
 export default function UploadPage() {
   const { user, loading } = useAuth()
@@ -113,6 +114,21 @@ export default function UploadPage() {
     if (!className || !className.trim()) {
       setError('Please select a subject')
       return
+    }
+
+    // Validate content for inappropriate language
+    const titleValidation = validateContent(title.trim(), 'title')
+    if (!titleValidation.isValid) {
+      setError(titleValidation.errors.join(' '))
+      return
+    }
+
+    if (description.trim()) {
+      const descValidation = validateContent(description.trim(), 'description')
+      if (!descValidation.isValid) {
+        setError(descValidation.errors.join(' '))
+        return
+      }
     }
 
     setUploading(true)
