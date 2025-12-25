@@ -91,11 +91,24 @@ async def upload_note(
         raise
     except Exception as e:
         db.rollback()
-        logger.error(f"Error uploading note: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while uploading the note"
-        )
+        error_msg = str(e)
+        logger.error(f"Error uploading note: {error_msg}", exc_info=True)
+        # Return more specific error messages for common issues
+        if "storage" in error_msg.lower() or "file" in error_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"File storage error: {error_msg}"
+            )
+        elif "database" in error_msg.lower() or "sql" in error_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database error. Please try again."
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Upload failed: {error_msg}"
+            )
 
 @router.get("", response_model=List[NoteResponse])
 async def get_notes(
@@ -232,6 +245,105 @@ async def get_global_notes(
         ))
     
     return result
+
+@router.get("/{note_id}/preview")
+async def preview_note(
+    note_id: int,
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Preview a note file (inline viewing)."""
+    from models import Note
+    from fastapi.responses import Response
+    
+    logger.info(f"Preview endpoint called for note_id: {note_id}, user: {current_user.email}")
+    
+    try:
+        note = db.query(Note).filter(Note.id == note_id).first()
+        if not note:
+            logger.warning(f"Preview requested for non-existent note ID: {note_id} by user {current_user.email}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Note not found"
+            )
+        
+        logger.info(f"Preview requested for note {note_id}, file_path: {note.file_path}")
+        
+        # Check if file exists using storage backend
+        try:
+            file_exists = storage.file_exists(note.file_path)
+            if not file_exists:
+                logger.warning(f"File not found for note {note_id}: {note.file_path}")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"File not found: {note.file_path}"
+                )
+        except Exception as e:
+            logger.error(f"Error checking file existence for note {note_id}: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error accessing file: {str(e)}"
+            )
+        
+        # Get file content from storage
+        try:
+            file_content = storage.get_file(note.file_path)
+            if not file_content:
+                logger.warning(f"File content is empty for note {note_id}: {note.file_path}")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="File is empty"
+                )
+        except FileNotFoundError:
+            logger.error(f"File not found when reading: {note.file_path}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="File not found"
+            )
+        except Exception as e:
+            logger.error(f"Error reading file for note {note_id}: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error reading file: {str(e)}"
+            )
+        
+        # Get file extension to determine media type
+        _, ext = os.path.splitext(note.file_path)
+        ext_lower = ext.lower()
+        
+        # Map file extensions to media types
+        media_type_map = {
+            '.pdf': 'application/pdf',
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.txt': 'text/plain',
+            '.doc': 'application/msword',
+            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        }
+        
+        # Default to octet-stream if type not recognized
+        media_type = media_type_map.get(ext_lower, 'application/octet-stream')
+        
+        logger.info(f"Serving preview for note {note_id} with media type: {media_type}")
+        
+        # Return file content for inline viewing
+        return Response(
+            content=file_content,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'inline; filename="{note.title}{ext}"',
+                "X-Content-Type-Options": "nosniff"
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in preview endpoint for note {note_id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error loading preview: {str(e)}"
+        )
 
 @router.get("/global/{note_id}", response_model=NoteDetailResponse)
 async def get_global_note_detail(

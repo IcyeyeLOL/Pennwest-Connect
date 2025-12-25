@@ -3,10 +3,11 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { BookOpen, Search, Heart, MessageCircle, Download, Filter } from 'lucide-react'
+import { BookOpen, Search, Heart, MessageCircle, Download, Filter, Eye } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { getApiUrl, getAuthHeaders } from '@/lib/api'
 import Navigation from '@/components/Navigation'
+import NotePreview from '@/components/NotePreview'
 
 interface Note {
   id: number
@@ -28,32 +29,87 @@ export default function ExplorePage() {
   const [filteredNotes, setFilteredNotes] = useState<Note[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedClass, setSelectedClass] = useState('')
-  const [classes] = useState<string[]>(['English', 'Math', 'Science', 'History'])
+  const [classes, setClasses] = useState<string[]>([])
   const [loadingNotes, setLoadingNotes] = useState(true)
   const [likingNotes, setLikingNotes] = useState<Set<number>>(new Set())
+  const [error, setError] = useState<string | null>(null)
+  const [previewNote, setPreviewNote] = useState<Note | null>(null)
 
   useEffect(() => {
     if (!loading && user) {
       fetchNotes()
+      fetchClasses()
     } else if (!loading && !user) {
       router.push('/login')
     }
   }, [user, loading, router])
 
+  // Refresh notes when page becomes visible or focused (user navigates back)
+  useEffect(() => {
+    if (!user || loading) return
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user && !loading) {
+        fetchNotes()
+        fetchClasses()
+      }
+    }
+
+    const handleFocus = () => {
+      if (user && !loading) {
+        fetchNotes()
+        fetchClasses()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, loading]) // fetchNotes and fetchClasses are stable due to useCallback
+
   const fetchNotes = useCallback(async () => {
     setLoadingNotes(true)
+    setError(null)
     try {
       const apiUrl = getApiUrl('/api/notes/global')
       const headers = getAuthHeaders()
       const response = await fetch(apiUrl, { headers })
       if (response.ok) {
         const data = await response.json()
-        setNotes(data)
+        setNotes(Array.isArray(data) ? data : [])
+        setError(null)
+      } else if (response.status === 401) {
+        setError('Your session has expired. Please log in again.')
+        document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+        setTimeout(() => router.push('/login'), 2000)
+      } else {
+        const errorData = await response.json().catch(() => ({ detail: 'Failed to fetch notes' }))
+        setError(typeof errorData.detail === 'string' ? errorData.detail : 'Failed to load notes.')
       }
     } catch (error) {
       console.error('Error fetching notes:', error)
+      setError('Network error. Please check your connection and try again.')
     } finally {
       setLoadingNotes(false)
+    }
+  }, [router])
+
+  const fetchClasses = useCallback(async () => {
+    try {
+      const apiUrl = getApiUrl('/api/notes/classes')
+      const response = await fetch(apiUrl)
+      if (response.ok) {
+        const data = await response.json()
+        setClasses(Array.isArray(data) ? data.sort() : [])
+      }
+    } catch (error) {
+      console.error('Error fetching classes:', error)
+      // Don't set error state for classes, just use empty array
     }
   }, [])
 
@@ -205,6 +261,22 @@ export default function ExplorePage() {
           </div>
         </div>
 
+        {error && (
+          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            <p className="font-semibold mb-1">Error:</p>
+            <p>{error}</p>
+            <button
+              onClick={() => {
+                setError(null)
+                fetchNotes()
+              }}
+              className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
         {loadingNotes ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
@@ -256,13 +328,22 @@ export default function ExplorePage() {
                         <span className="text-sm font-medium">{note.comment_count}</span>
                       </Link>
                     </div>
-                    <button
-                      onClick={() => downloadNote(note)}
-                      className="p-2 text-primary-600 hover:bg-primary-50 rounded transition-colors"
-                      title="Download"
-                    >
-                      <Download className="h-5 w-5" />
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => setPreviewNote(note)}
+                        className="p-2 text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                        title="Preview"
+                      >
+                        <Eye className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={() => downloadNote(note)}
+                        className="p-2 text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                        title="Download"
+                      >
+                        <Download className="h-5 w-5" />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="mt-3 pt-3 border-t">
@@ -290,6 +371,18 @@ export default function ExplorePage() {
           </>
         )}
       </main>
+
+      {/* Preview Modal */}
+      {previewNote && (
+        <NotePreview
+          noteId={previewNote.id}
+          noteTitle={previewNote.title}
+          filePath={previewNote.file_path || ''}
+          isOpen={!!previewNote}
+          onClose={() => setPreviewNote(null)}
+          onDownload={() => downloadNote(previewNote)}
+        />
+      )}
     </div>
   )
 }

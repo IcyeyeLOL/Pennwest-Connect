@@ -1,12 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { BookOpen } from 'lucide-react'
+import { BookOpen, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 import Cookies from 'js-cookie'
 import { getApiUrl, isProduction, getCurrentApiUrl } from '@/lib/api'
 import { validateRegistrationForm } from '@/lib/validation'
+
+interface UsernameAvailability {
+  available: boolean | null // null = not checked yet
+  message: string
+  checking: boolean
+}
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('')
@@ -14,7 +20,79 @@ export default function RegisterPage() {
   const [username, setUsername] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [usernameAvailability, setUsernameAvailability] = useState<UsernameAvailability>({
+    available: null,
+    message: '',
+    checking: false
+  })
   const router = useRouter()
+
+  /**
+   * Check username availability with debouncing
+   * Only checks if username is at least 3 characters
+   * Debounces by 500ms to avoid excessive API calls
+   */
+  const checkUsernameAvailability = useCallback(async (usernameToCheck: string) => {
+    // Reset if username is too short
+    if (usernameToCheck.length < 3) {
+      setUsernameAvailability({
+        available: null,
+        message: '',
+        checking: false
+      })
+      return
+    }
+
+    // Set checking state
+    setUsernameAvailability(prev => ({ ...prev, checking: true }))
+
+    try {
+      const apiUrl = getApiUrl(`/api/auth/check-username?username=${encodeURIComponent(usernameToCheck)}`)
+      const response = await fetch(apiUrl)
+
+      if (response.ok) {
+        const data = await response.json()
+        setUsernameAvailability({
+          available: data.available,
+          message: data.message,
+          checking: false
+        })
+      } else {
+        // If check fails, don't block registration (might be network issue)
+        setUsernameAvailability({
+          available: null,
+          message: '',
+          checking: false
+        })
+      }
+    } catch (err) {
+      // Silently fail - don't block user if check fails
+      setUsernameAvailability({
+        available: null,
+        message: '',
+        checking: false
+      })
+    }
+  }, [])
+
+  // Debounced username check effect
+  useEffect(() => {
+    // Clear previous timeout
+    const timeoutId = setTimeout(() => {
+      if (username.trim().length >= 3) {
+        checkUsernameAvailability(username.trim())
+      } else {
+        setUsernameAvailability({
+          available: null,
+          message: '',
+          checking: false
+        })
+      }
+    }, 500) // 500ms debounce
+
+    // Cleanup timeout on username change
+    return () => clearTimeout(timeoutId)
+  }, [username, checkUsernameAvailability])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -24,6 +102,12 @@ export default function RegisterPage() {
     const validation = validateRegistrationForm(username, email, password)
     if (!validation.isValid) {
       setError(validation.errors.join('. '))
+      return
+    }
+
+    // Check if username is taken (if availability check was performed)
+    if (usernameAvailability.available === false) {
+      setError('Username is already taken. Please choose a different username.')
       return
     }
     
@@ -163,18 +247,60 @@ export default function RegisterPage() {
             <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
               Username
             </label>
-            <input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              minLength={3}
-              maxLength={30}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white"
-              placeholder="johndoe"
-            />
-            <p className="mt-1 text-xs text-gray-500">3-30 characters, letters, numbers, underscores, and hyphens only</p>
+            <div className="relative">
+              <input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value)
+                  setError('') // Clear general error when username changes
+                }}
+                required
+                minLength={3}
+                maxLength={30}
+                className={`w-full px-4 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white ${
+                  usernameAvailability.available === false
+                    ? 'border-red-500 focus:ring-red-500'
+                    : usernameAvailability.available === true
+                    ? 'border-green-500 focus:ring-green-500'
+                    : 'border-gray-300'
+                }`}
+                placeholder="johndoe"
+              />
+              {/* Status icon */}
+              {username.length >= 3 && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  {usernameAvailability.checking ? (
+                    <Loader2 className="h-5 w-5 text-gray-400 animate-spin" />
+                  ) : usernameAvailability.available === true ? (
+                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  ) : usernameAvailability.available === false ? (
+                    <XCircle className="h-5 w-5 text-red-500" />
+                  ) : null}
+                </div>
+              )}
+            </div>
+            {/* Username availability message */}
+            {username.length >= 3 && usernameAvailability.message && (
+              <p
+                className={`mt-1 text-xs ${
+                  usernameAvailability.available === true
+                    ? 'text-green-600'
+                    : usernameAvailability.available === false
+                    ? 'text-red-600'
+                    : 'text-gray-500'
+                }`}
+              >
+                {usernameAvailability.message}
+              </p>
+            )}
+            {username.length < 3 && username.length > 0 && (
+              <p className="mt-1 text-xs text-gray-500">3-30 characters, letters, numbers, underscores, and hyphens only</p>
+            )}
+            {username.length === 0 && (
+              <p className="mt-1 text-xs text-gray-500">3-30 characters, letters, numbers, underscores, and hyphens only</p>
+            )}
           </div>
 
           <div>
@@ -211,7 +337,7 @@ export default function RegisterPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || usernameAvailability.available === false || usernameAvailability.checking}
             className="w-full py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Creating account...' : 'Create Account'}

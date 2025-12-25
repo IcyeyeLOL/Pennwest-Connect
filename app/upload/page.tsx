@@ -18,25 +18,69 @@ export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState('')
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  
+  // Maximum file size: 10MB (matches backend default)
+  const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB in bytes
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    if (acceptedFiles.length > 0) {
-      setFile(acceptedFiles[0])
-      setError('')
+  const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
+    // Handle rejected files (wrong type, too many files, etc.)
+    if (rejectedFiles.length > 0) {
+      const rejection = rejectedFiles[0]
+      if (rejection.errors.some((e: any) => e.code === 'file-invalid-type')) {
+        setError('Invalid file type. Please upload PDF, DOC, DOCX, TXT, or image files.')
+      } else if (rejection.errors.some((e: any) => e.code === 'too-many-files')) {
+        setError('Please upload only one file at a time.')
+      } else {
+        setError('File rejected. Please try a different file.')
+      }
+      return
     }
-  }, [])
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    if (acceptedFiles.length > 0) {
+      const selectedFile = acceptedFiles[0]
+      
+      // Check file size on frontend
+      if (selectedFile.size > MAX_FILE_SIZE) {
+        setError(`File is too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB.`)
+        return
+      }
+
+      setFile(selectedFile)
+      setError('')
+      setUploadProgress(0)
+    }
+  }, [MAX_FILE_SIZE])
+
+  const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
     onDrop,
     accept: {
       'application/pdf': ['.pdf'],
       'application/msword': ['.doc'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
       'text/plain': ['.txt'],
-      'image/*': ['.png', '.jpg', '.jpeg'],
+      'image/png': ['.png'],
+      'image/jpeg': ['.jpg', '.jpeg'],
     },
     maxFiles: 1,
+    maxSize: MAX_FILE_SIZE,
   })
+
+  // Handle file rejections from dropzone
+  useEffect(() => {
+    if (fileRejections.length > 0) {
+      const rejection = fileRejections[0]
+      if (rejection.errors.some((e) => e.code === 'file-invalid-type')) {
+        setError('Invalid file type. Please upload PDF, DOC, DOCX, TXT, or image files.')
+      } else if (rejection.errors.some((e) => e.code === 'file-too-large')) {
+        setError(`File is too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB.`)
+      } else if (rejection.errors.some((e) => e.code === 'too-many-files')) {
+        setError('Please upload only one file at a time.')
+      } else {
+        setError('File rejected. Please try a different file.')
+      }
+    }
+  }, [fileRejections, MAX_FILE_SIZE])
 
   useEffect(() => {
     if (!loading && !user) {
@@ -47,55 +91,107 @@ export default function UploadPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setUploadProgress(0)
 
+    // Validation
     if (!file) {
       setError('Please select a file to upload')
       return
     }
 
-    if (!title || !className) {
-      setError('Please fill in all required fields')
+    // Double-check file size
+    if (file.size > MAX_FILE_SIZE) {
+      setError(`File is too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB.`)
+      return
+    }
+
+    if (!title || !title.trim()) {
+      setError('Please enter a note title')
+      return
+    }
+
+    if (!className || !className.trim()) {
+      setError('Please select a subject')
       return
     }
 
     setUploading(true)
+    setUploadProgress(10) // Show initial progress
 
     try {
       const apiUrl = getApiUrl('/api/notes/upload')
       const formData = new FormData()
       formData.append('file', file)
-      formData.append('title', title)
-      formData.append('class_name', className)
-      formData.append('description', description)
+      formData.append('title', title.trim())
+      formData.append('class_name', className.trim())
+      formData.append('description', description.trim())
 
+      // Don't set Content-Type header - browser will set it with boundary for multipart/form-data
       const headers = getAuthHeadersFormData()
+      
+      setUploadProgress(30)
+      
       const response = await fetch(apiUrl, {
         method: 'POST',
-        headers,
+        headers, // Authorization header only, let browser set Content-Type
         body: formData,
       })
 
-      const data = await response.json()
+      setUploadProgress(70)
+
+      // Try to parse response as JSON
+      let data: any
+      const contentType = response.headers.get('content-type')
+      
+      try {
+        if (contentType?.includes('application/json')) {
+          data = await response.json()
+        } else {
+          // If not JSON, read as text
+          const text = await response.text()
+          throw new Error(`Unexpected response format: ${text.substring(0, 100)}`)
+        }
+      } catch (parseError) {
+        console.error('Error parsing response:', parseError)
+        setError('Server returned an invalid response. Please try again.')
+        return
+      }
+
+      setUploadProgress(90)
 
       if (response.ok) {
-        router.push('/dashboard')
-        router.refresh()
+        setUploadProgress(100)
+        // Small delay to show completion
+        setTimeout(() => {
+          router.push('/dashboard')
+        }, 500)
       } else {
         // Handle FastAPI validation errors which can be an array
-        if (Array.isArray(data.detail)) {
-          const errorMessages = data.detail.map((err: any) => {
-            const field = err.loc ? err.loc[err.loc.length - 1] : 'field'
-            return `${field}: ${err.msg}`
-          })
-          setError(errorMessages.join('. '))
-        } else if (typeof data.detail === 'string') {
-          setError(data.detail)
-        } else {
-          setError('Upload failed. Please check your input and try again.')
+        let errorMessage = 'Upload failed. Please check your input and try again.'
+        if (data) {
+          if (Array.isArray(data.detail)) {
+            const errorMessages = data.detail.map((err: any) => {
+              const field = err.loc ? err.loc[err.loc.length - 1] : 'field'
+              return `${field}: ${err.msg}`
+            })
+            errorMessage = errorMessages.join('. ')
+          } else if (typeof data.detail === 'string') {
+            errorMessage = data.detail
+          }
         }
+        setError(errorMessage)
+        setUploadProgress(0)
       }
     } catch (err: any) {
-      setError(err.message || 'Network error. Please try again.')
+      console.error('Upload error:', err)
+      let errorMessage = 'An error occurred during upload. Please try again.'
+      if (err.message?.includes('fetch') || err.message?.includes('Network')) {
+        errorMessage = 'Network error. Please check your connection and try again.'
+      } else if (err.message) {
+        errorMessage = err.message
+      }
+      setError(errorMessage)
+      setUploadProgress(0)
     } finally {
       setUploading(false)
     }
@@ -182,23 +278,41 @@ export default function UploadPage() {
                   isDragActive
                     ? 'border-primary-500 bg-primary-50'
                     : 'border-gray-300 hover:border-primary-400'
-                }`}
+                } ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <input {...getInputProps()} />
+                <input {...getInputProps()} disabled={uploading} />
                 {file ? (
-                  <div className="flex items-center justify-center space-x-2">
-                    <FileText className="h-8 w-8 text-primary-600" />
-                    <span className="text-gray-700">{file.name}</span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setFile(null)
-                      }}
-                      className="ml-2 text-red-600 hover:text-red-700"
-                    >
-                      <X className="h-5 w-5" />
-                    </button>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-center space-x-2">
+                      <FileText className="h-8 w-8 text-primary-600" />
+                      <div className="text-left">
+                        <span className="text-gray-700 block">{file.name}</span>
+                        <span className="text-xs text-gray-500">
+                          {(file.size / 1024 / 1024).toFixed(2)} MB
+                        </span>
+                      </div>
+                      {!uploading && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setFile(null)
+                            setError('')
+                          }}
+                          className="ml-2 text-red-600 hover:text-red-700"
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
+                      )}
+                    </div>
+                    {uploading && uploadProgress > 0 && (
+                      <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                        <div
+                          className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${uploadProgress}%` }}
+                        ></div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div>
@@ -209,7 +323,7 @@ export default function UploadPage() {
                         : 'Drag & drop a file here, or click to select'}
                     </p>
                     <p className="text-sm text-gray-500 mt-2">
-                      Supports: PDF, DOC, DOCX, TXT, Images
+                      Supports: PDF, DOC, DOCX, TXT, Images (Max {MAX_FILE_SIZE / 1024 / 1024}MB)
                     </p>
                   </div>
                 )}
@@ -219,10 +333,17 @@ export default function UploadPage() {
             <div className="flex space-x-4">
               <button
                 type="submit"
-                disabled={uploading}
-                className="flex-1 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={uploading || !file}
+                className="flex-1 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
-                {uploading ? 'Uploading...' : 'Upload Notes'}
+                {uploading ? (
+                  <>
+                    <span className="mr-2">Uploading...</span>
+                    {uploadProgress > 0 && <span className="text-sm">({uploadProgress}%)</span>}
+                  </>
+                ) : (
+                  'Upload Notes'
+                )}
               </button>
               <Link
                 href="/dashboard"

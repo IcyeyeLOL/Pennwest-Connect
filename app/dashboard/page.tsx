@@ -3,10 +3,11 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Search, FileText, Download, Trash2, BookOpen } from 'lucide-react'
+import { Search, FileText, Download, Trash2, BookOpen, Eye } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { getApiUrl, getAuthHeaders, getAuthHeadersFormData } from '@/lib/api'
 import Navigation from '@/components/Navigation'
+import NotePreview from '@/components/NotePreview'
 
 interface Note {
   id: number
@@ -28,27 +29,79 @@ export default function DashboardPage() {
   const [classes, setClasses] = useState<string[]>([])
   const [loadingNotes, setLoadingNotes] = useState(true)
   const [deletingNotes, setDeletingNotes] = useState<Set<number>>(new Set())
+  const [error, setError] = useState<string | null>(null)
+  const [previewNote, setPreviewNote] = useState<Note | null>(null)
 
   const fetchNotes = useCallback(async () => {
     setLoadingNotes(true)
+    setError(null) // Clear previous errors
     try {
       const apiUrl = getApiUrl('/api/notes')
       const headers = getAuthHeaders()
       const response = await fetch(apiUrl, { headers })
+      
       if (response.ok) {
         const data = await response.json()
-        setNotes(data)
+        // Ensure data is an array
+        setNotes(Array.isArray(data) ? data : [])
+        setError(null)
       } else if (response.status === 401) {
         // Token expired or invalid
+        setError('Your session has expired. Please log in again.')
         document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
-        router.push('/login')
+        setTimeout(() => router.push('/login'), 2000) // Redirect after showing error
+      } else {
+        // Handle other error statuses
+        const errorData = await response.json().catch(() => ({ detail: 'Failed to fetch notes' }))
+        const errorMessage = typeof errorData.detail === 'string' 
+          ? errorData.detail 
+          : 'Failed to load notes. Please try again.'
+        setError(errorMessage)
+        setNotes([]) // Set empty array on error
       }
     } catch (error) {
       console.error('Error fetching notes:', error)
+      setError('Network error. Please check your connection and try again.')
+      setNotes([]) // Set empty array on error
     } finally {
       setLoadingNotes(false)
     }
   }, [router])
+
+  // Fetch notes when user is available
+  useEffect(() => {
+    if (!loading && user) {
+      fetchNotes()
+    } else if (!loading && !user) {
+      // If user is not available, stop loading
+      setLoadingNotes(false)
+    }
+  }, [loading, user, fetchNotes])
+
+  // Refresh notes when page becomes visible or focused (user navigates back)
+  useEffect(() => {
+    if (!user || loading) return
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user && !loading) {
+        fetchNotes()
+      }
+    }
+
+    const handleFocus = () => {
+      if (user && !loading) {
+        fetchNotes()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [user, loading, fetchNotes])
 
   // Derive classes dynamically from user's notes
   useEffect(() => {
@@ -189,6 +242,19 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {error && (
+          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            <p className="font-semibold mb-1">Error:</p>
+            <p>{error}</p>
+            <button
+              onClick={() => fetchNotes()}
+              className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
         {loadingNotes ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
@@ -201,6 +267,13 @@ export default function DashboardPage() {
               <div className="flex items-start justify-between mb-4">
                 <FileText className="h-8 w-8 text-primary-600" />
                 <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setPreviewNote(note)}
+                    className="p-2 text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                    title="Preview"
+                  >
+                    <Eye className="h-5 w-5" />
+                  </button>
                   <button
                     onClick={() => downloadNote(note)}
                     className="p-2 text-primary-600 hover:bg-primary-50 rounded transition-colors"
@@ -259,6 +332,18 @@ export default function DashboardPage() {
           </div>
         )}
       </main>
+
+      {/* Preview Modal */}
+      {previewNote && (
+        <NotePreview
+          noteId={previewNote.id}
+          noteTitle={previewNote.title}
+          filePath={previewNote.file_path || ''}
+          isOpen={!!previewNote}
+          onClose={() => setPreviewNote(null)}
+          onDownload={() => downloadNote(previewNote)}
+        />
+      )}
     </div>
   )
 }

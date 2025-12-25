@@ -3,10 +3,11 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import { BookOpen, Heart, MessageCircle, Download, ArrowLeft, Send } from 'lucide-react'
+import { BookOpen, Heart, MessageCircle, Download, ArrowLeft, Send, Eye } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { getApiUrl, getAuthHeaders } from '@/lib/api'
 import Navigation from '@/components/Navigation'
+import NotePreview from '@/components/NotePreview'
 
 interface Comment {
   id: number
@@ -41,6 +42,7 @@ export default function NoteDetailPage() {
   const [commentText, setCommentText] = useState('')
   const [submittingComment, setSubmittingComment] = useState(false)
   const [liking, setLiking] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
 
   const fetchNote = useCallback(async () => {
     setLoadingNote(true)
@@ -179,13 +181,22 @@ export default function NoteDetailPage() {
                 <p className="text-gray-700 mb-4">{note.description}</p>
               )}
             </div>
-            <button
-              onClick={downloadNote}
-              className="p-3 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-              title="Download"
-            >
-              <Download className="h-6 w-6" />
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setShowPreview(true)}
+                className="p-3 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                title="Preview"
+              >
+                <Eye className="h-6 w-6" />
+              </button>
+              <button
+                onClick={downloadNote}
+                className="p-3 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                title="Download"
+              >
+                <Download className="h-6 w-6" />
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center space-x-6 mb-6 pb-6 border-b">
@@ -259,6 +270,18 @@ export default function NoteDetailPage() {
           </div>
         </div>
       </main>
+
+      {/* Preview Modal */}
+      {note && showPreview && (
+        <NotePreview
+          noteId={note.id}
+          noteTitle={note.title}
+          filePath={note.file_path || ''}
+          isOpen={showPreview}
+          onClose={() => setShowPreview(false)}
+          onDownload={downloadNote}
+        />
+      )}
     </div>
   )
 }

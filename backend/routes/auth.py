@@ -114,6 +114,39 @@ def login(user_data: UserLogin, db: Session = Depends(get_db)):
     logger.info(f"User logged in successfully: {user_data.email}")
     return TokenResponse(access_token=access_token, token_type="bearer")
 
+@router.get("/check-username")
+def check_username_availability(username: str, db: Session = Depends(get_db)):
+    """
+    Check if a username is available.
+    
+    Returns availability status and message.
+    Only checks if username is at least 3 characters.
+    """
+    from models import User
+    
+    # Validate minimum length
+    if len(username) < 3:
+        return {
+            "available": False,
+            "message": "Username must be at least 3 characters"
+        }
+    
+    # Check if username exists (case-insensitive)
+    existing_user = db.query(User).filter(
+        User.username.ilike(username)  # Case-insensitive comparison
+    ).first()
+    
+    if existing_user:
+        return {
+            "available": False,
+            "message": "Username is already taken"
+        }
+    
+    return {
+        "available": True,
+        "message": "Username is available"
+    }
+
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(current_user = Depends(get_current_user)):
     """Get current user information."""
